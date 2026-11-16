@@ -2,9 +2,10 @@
 
 ## Runtime
 
-An independent React/TypeScript application and a Go HTTP API. The production binary
-embeds the compiled frontend. PostgreSQL is the only supporting service. No Redis,
-queues, object storage, Arkive API, or live game-data service is required.
+An independent Go HTTP API with a Taro mini-program client. The production binary
+contains only the API; the optional React browser client is developed separately.
+PostgreSQL is the only supporting service. No Redis, queues, object storage, Arkive API,
+or live game-data service is required.
 
 The visual language follows Arkive: neutral surfaces, rounded panels, a warm primary
 action, blue selection and focus, light/dark themes, and a compact sidebar. The game
