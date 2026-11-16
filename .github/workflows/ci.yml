@@ -1,0 +1,51 @@
+name: Validate application
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: club
+          POSTGRES_USER: club
+          POSTGRES_PASSWORD: ci-test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U club -d club"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            miniapp/package-lock.json
+      - run: go vet ./...
+      - run: go test ./server -count=1 -v
+        env:
+          TEST_DATABASE_URL: postgres://club:ci-test-password@localhost:5432/club?sslmode=disable
+      - run: npm ci
+      - run: npm run build
+      - run: npm ci
+        working-directory: miniapp
+      - run: npx tsc --noEmit
+        working-directory: miniapp
+      - run: npm run build:weapp
+        working-directory: miniapp
+        env:
+          TARO_APP_API_BASE: https://gmzz-club-api.tc-imba.com

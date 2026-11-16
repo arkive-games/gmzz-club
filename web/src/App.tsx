@@ -85,7 +85,7 @@ function Auth({ onDone }: { onDone: () => void }) {
         <div className="brand">
           <Anchor size={26} />
           <span>
-            ARKIVE <small>CLUB</small>
+            GMZZ <small>CLUB</small>
           </span>
         </div>
         <div className="auth-copy">
@@ -379,7 +379,7 @@ export default function App() {
         >
           <Anchor size={27} />
           <span>
-            ARKIVE <small>CLUB</small>
+             GMZZ <small>CLUB</small>
           </span>
         </a>
         <div className="product-name">诡秘之主 · 俱乐部管理</div>
@@ -1192,7 +1192,7 @@ export default function App() {
           )}
           <footer className="page-footer">
             <span>
-              ARKIVE CLUB <i />
+              GMZZ CLUB <i />
               以非凡之名，集结
             </span>
             <span>诡秘之主 · 俱乐部管理系统</span>

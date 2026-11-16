@@ -19,6 +19,8 @@ services:
       DATABASE_URL: postgres://club:${POSTGRES_PASSWORD}@db:5432/club?sslmode=disable
       PORT: 19080
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      WECHAT_APPID: ${WECHAT_APPID:?Set WECHAT_APPID}
+      WECHAT_APP_SECRET: ${WECHAT_APP_SECRET:?Set WECHAT_APP_SECRET}
     ports:
       - "127.0.0.1:19080:19080"
     depends_on:

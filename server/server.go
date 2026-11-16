@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -27,9 +28,12 @@ import (
 var resources embed.FS
 
 type App struct {
-	db     *pgxpool.Pool
-	secure bool
-	limits sync.Map
+	db            *pgxpool.Pool
+	secure        bool
+	wechatAppID   string
+	wechatSecret  string
+	wechatAuthURL string
+	limits        sync.Map
 }
 type apiError struct {
 	Status  int
@@ -49,7 +53,16 @@ func New(ctx context.Context, databaseURL string, secure bool) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	app := &App{db: db, secure: secure}
+	app := &App{
+		db:            db,
+		secure:        secure,
+		wechatAppID:   strings.TrimSpace(os.Getenv("WECHAT_APPID")),
+		wechatSecret:  strings.TrimSpace(os.Getenv("WECHAT_APP_SECRET")),
+		wechatAuthURL: strings.TrimSpace(os.Getenv("WECHAT_AUTH_URL")),
+	}
+	if app.wechatAuthURL == "" {
+		app.wechatAuthURL = "https://api.weixin.qq.com/sns/jscode2session"
+	}
 	tx, err := db.Begin(ctx)
 	if err != nil {
 		db.Close()
@@ -204,6 +217,7 @@ func (a *App) Handler() http.Handler {
 	})
 	m.HandleFunc("POST /api/auth/register", a.wrap(a.register, true))
 	m.HandleFunc("POST /api/auth/login", a.wrap(a.login, true))
+	m.HandleFunc("POST /api/auth/wechat", a.wrap(a.wechatLogin, true))
 	m.HandleFunc("POST /api/auth/logout", a.wrap(a.logout, false))
 	m.HandleFunc("GET /api/state", a.wrap(a.state, false))
 	m.HandleFunc("GET /api/users", a.wrap(a.users, false))
@@ -246,6 +260,15 @@ type credentials struct {
 	Username    string `json:"username"`
 	Password    string `json:"password"`
 	DisplayName string `json:"displayName"`
+}
+type wechatCredentials struct {
+	Code        string `json:"code"`
+	DisplayName string `json:"displayName"`
+}
+type wechatSession struct {
+	OpenID  string `json:"openid"`
+	ErrCode int    `json:"errcode"`
+	ErrMsg  string `json:"errmsg"`
 }
 type loginWindow struct {
 	count int
@@ -311,6 +334,69 @@ func (a *App) login(w http.ResponseWriter, r *http.Request, tx pgx.Tx, _ string)
 	}
 	return a.newSession(w, r, tx, id)
 }
+func (a *App) wechatLogin(w http.ResponseWriter, r *http.Request, tx pgx.Tx, _ string) (any, error) {
+	if err := a.authLimit(r); err != nil {
+		return nil, err
+	}
+	if a.wechatAppID == "" || a.wechatSecret == "" {
+		return nil, fail(503, "微信登录尚未配置，请联系管理员")
+	}
+	var c wechatCredentials
+	if err := decode(r, &c); err != nil {
+		return nil, err
+	}
+	c.Code = strings.TrimSpace(c.Code)
+	if c.Code == "" {
+		return nil, fail(400, "微信授权码不能为空")
+	}
+	params := url.Values{
+		"appid":      {a.wechatAppID},
+		"secret":     {a.wechatSecret},
+		"js_code":    {c.Code},
+		"grant_type": {"authorization_code"},
+	}
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, a.wechatAuthURL+"?"+params.Encode(), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fail(502, "微信授权服务暂时不可用")
+	}
+	defer resp.Body.Close()
+	var session wechatSession
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 64*1024)).Decode(&session); err != nil {
+		return nil, fail(502, "微信授权响应无效")
+	}
+	if resp.StatusCode != http.StatusOK || session.ErrCode != 0 || session.OpenID == "" {
+		return nil, fail(401, "微信授权失败，请重试")
+	}
+	var id string
+	err = tx.QueryRow(r.Context(), "SELECT id::text FROM users WHERE wechat_openid=$1", session.OpenID).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		id = uid()
+		name := strings.TrimSpace(c.DisplayName)
+		if name == "" {
+			name = "微信用户"
+		}
+		if len([]rune(name)) > 40 {
+			name = string([]rune(name)[:40])
+		}
+		username := "wx_" + session.OpenID
+		if len(username) > 40 || strings.ContainsAny(username, " \t\n\r@/") {
+			username = "wx_" + hashed(session.OpenID)[:32]
+		}
+		passwordHash, hashErr := bcrypt.GenerateFromPassword([]byte(token()), bcrypt.DefaultCost)
+		if hashErr != nil {
+			return nil, hashErr
+		}
+		_, err = tx.Exec(r.Context(), "INSERT INTO users(id,username,display_name,password_hash,wechat_openid) VALUES($1,$2,$3,$4,$5)", id, username, name, string(passwordHash), session.OpenID)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return a.newSession(w, r, tx, id)
+}
 func (a *App) newSession(w http.ResponseWriter, r *http.Request, tx pgx.Tx, id string) (any, error) {
 	secret := token()
 	_, err := tx.Exec(r.Context(), "DELETE FROM sessions WHERE expires_at<clock_timestamp()")
@@ -367,7 +453,7 @@ func (a *App) state(_ http.ResponseWriter, r *http.Request, tx pgx.Tx, user stri
 	ctx := r.Context()
 	out := map[string]any{}
 	var me []byte
-	if err := tx.QueryRow(ctx, "SELECT json_build_object('id',id,'username',username,'display_name',display_name,'is_admin',is_admin) FROM users WHERE id=$1", user).Scan(&me); err != nil {
+	if err := tx.QueryRow(ctx, "SELECT json_build_object('id',id,'username',username,'display_name',display_name,'wechat_openid',wechat_openid,'is_admin',is_admin) FROM users WHERE id=$1", user).Scan(&me); err != nil {
 		return nil, err
 	}
 	out["me"] = json.RawMessage(me)
