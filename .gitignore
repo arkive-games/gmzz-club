@@ -1,0 +1,9 @@
+node_modules/
+web/dist/*
+!web/dist/.gitkeep
+*.exe
+.env
+coverage/
+test-results/
+*.log
+LOCAL_PREVIEW.md

@@ -1,0 +1,7 @@
+FROM alpine:3.23
+RUN apk add --no-cache ca-certificates tzdata && addgroup -S club && adduser -S club -G club
+COPY club-linux /usr/local/bin/club
+RUN chmod 0755 /usr/local/bin/club
+USER club
+EXPOSE 19080
+ENTRYPOINT ["/usr/local/bin/club"]

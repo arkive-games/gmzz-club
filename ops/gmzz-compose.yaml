@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: club
+      POSTGRES_USER: club
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - club-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U club -d club"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  app:
+    image: ghcr.io/arkive-games/gmzz-club:latest
+    environment:
+      DATABASE_URL: postgres://club:${POSTGRES_PASSWORD}@db:5432/club?sslmode=disable
+      PORT: 19080
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+    ports:
+      - "127.0.0.1:19080:19080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  club-data:
