@@ -1,1 +1,1 @@
-export default {navigationBarTitleText:'活动与团队'}
+export default {navigationBarTitleText:'日程'}

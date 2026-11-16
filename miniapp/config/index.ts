@@ -8,6 +8,9 @@ export default defineConfig(async (merge) => merge({
   sourceRoot: 'src',
   outputRoot: 'dist',
   framework: 'react',
+  defineConstants: {
+    'process.env.TARO_APP_API_BASE': JSON.stringify(process.env.TARO_APP_API_BASE || 'http://127.0.0.1:19080'),
+  },
   compiler: { type: 'webpack5', prebundle: { enable: false } },
   mini: { postcss: { pxtransform: { enable: true }, cssModules: { enable: false } } },
   h5: {},

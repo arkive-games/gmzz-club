@@ -3,6 +3,7 @@ web/dist/*
 !web/dist/.gitkeep
 *.exe
 .env
+.mcp.json
 coverage/
 test-results/
 *.log

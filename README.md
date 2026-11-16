@@ -14,7 +14,7 @@ Requires Docker Compose, or Go 1.26+, Node 22.12+ and PostgreSQL 17+.
 
 ```powershell
 Copy-Item .env.example .env
-# Set POSTGRES_PASSWORD and matching DATABASE_URL in .env.
+# Set POSTGRES_PASSWORD, WECHAT_APPID and WECHAT_APP_SECRET in .env.
 docker compose up --build -d
 ```
 
@@ -109,5 +109,5 @@ $env:TARO_APP_API_BASE = 'https://club.example.com'
 npm run dev:weapp
 ```
 
-Open `miniapp/dist` in WeChat DevTools. Build a release package with `npm run build:weapp`. The mini-program keeps the club visual language, uses native Taro components with NutUI React Taro, and implements team movement with touch events. See [`docs/miniapp.md`](docs/miniapp.md) for API host, HTTPS and session notes.
+Open `miniapp/` in WeChat DevTools. Before building for release, set `TARO_APP_API_BASE` to `https://gmzz-club-api.tc-imba.com`, then run `npm run build:weapp`. The mini-program keeps the club visual language, uses native Taro components, and implements team movement with touch events. See [`docs/miniapp.md`](docs/miniapp.md) for API host, HTTPS and session notes.
 

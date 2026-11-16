@@ -1,9 +1,11 @@
 CREATE TABLE IF NOT EXISTS schema_version(version integer PRIMARY KEY);
 CREATE TABLE IF NOT EXISTS users (
  id uuid PRIMARY KEY, username text NOT NULL UNIQUE, display_name text NOT NULL,
- password_hash text NOT NULL, is_admin boolean NOT NULL DEFAULT false,
+ password_hash text NOT NULL, wechat_openid text,
+ is_admin boolean NOT NULL DEFAULT false,
  created_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE users ADD COLUMN IF NOT EXISTS wechat_openid text;
 CREATE TABLE IF NOT EXISTS sessions (
  token_hash text PRIMARY KEY, user_id uuid NOT NULL REFERENCES users ON DELETE CASCADE,
  expires_at timestamptz NOT NULL
@@ -56,5 +58,6 @@ CREATE INDEX IF NOT EXISTS idx_memberships_user ON memberships(user_id);
 CREATE INDEX IF NOT EXISTS idx_characters_club ON characters(club_id);
 CREATE INDEX IF NOT EXISTS idx_events_club ON events(club_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_wechat_openid ON users(wechat_openid) WHERE wechat_openid IS NOT NULL;
 INSERT INTO schema_version VALUES(1) ON CONFLICT DO NOTHING;
 ALTER TABLE events ALTER COLUMN team_count SET DEFAULT 3;
