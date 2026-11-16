@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"log"
 	"net/http"
 	"net/url"
@@ -186,7 +185,7 @@ func (a *App) wrap(fn endpoint, public bool) http.HandlerFunc {
 		write(w, 200, result)
 	}
 }
-func (a *App) Handler(frontend fs.FS) http.Handler {
+func (a *App) Handler() http.Handler {
 	m := http.NewServeMux()
 	m.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
@@ -229,30 +228,7 @@ func (a *App) Handler(frontend fs.FS) http.Handler {
 		write(w, 404, map[string]string{"error": "接口不存在"})
 	})
 	m.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" && r.Method != "HEAD" {
-			w.WriteHeader(405)
-			return
-		}
-		name := strings.TrimPrefix(r.URL.Path, "/")
-		if name == "" {
-			name = "index.html"
-		}
-		if _, err := fs.Stat(frontend, name); err != nil {
-			if strings.Contains(name, ".") {
-				http.NotFound(w, r)
-				return
-			}
-			name = "index.html"
-		}
-		data, err := fs.ReadFile(frontend, name)
-		if err != nil {
-			http.Error(w, "Build the frontend first: npm run build", 503)
-			return
-		}
-		if name == "index.html" {
-			w.Header().Set("Cache-Control", "no-cache")
-		}
-		http.ServeContent(w, r, name, time.Time{}, strings.NewReader(string(data)))
+		write(w, 404, map[string]string{"error": "API endpoint only"})
 	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")

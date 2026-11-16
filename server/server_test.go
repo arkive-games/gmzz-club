@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -13,7 +12,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"testing/fstest"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -142,8 +140,7 @@ func (c *client) character(name string) string {
 
 func TestPostgresWorkflow(t *testing.T) {
 	app := testApp(t)
-	var assets fs.FS = fstest.MapFS{"index.html": &fstest.MapFile{Data: []byte("test")}}
-	h := app.Handler(assets)
+	h := app.Handler()
 	ctx := context.Background()
 	platform := registerClient(t, h, "platform")
 	owner := registerClient(t, h, "owner")

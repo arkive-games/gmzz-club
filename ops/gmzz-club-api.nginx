@@ -27,7 +27,7 @@ server {
     ssl_protocols TLSv1.2 TLSv1.3;
 
     client_max_body_size 2m;
-    location / {
+    location ^~ /api/ {
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -35,5 +35,15 @@ server {
         proxy_set_header X-Forwarded-Proto https;
         proxy_pass http://gmzz_club_api;
         proxy_read_timeout 120s;
+    }
+
+    location = / {
+        default_type application/json;
+        add_header Cache-Control no-store always;
+        return 404 '{"error":"API endpoint only"}';
+    }
+
+    location / {
+        return 404;
     }
 }

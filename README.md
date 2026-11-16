@@ -4,8 +4,9 @@ Independent Lord of the Mysteries club management: accounts, multiple characters
 approved club membership, role-based administration, activity registration and
 five-squad / six-member team planning.
 
-**Runtime: one Go application + PostgreSQL.** The production executable serves both
-the API and the compiled React frontend. No Redis or additional service is required.
+**Runtime: one Go API application + PostgreSQL.** The production executable contains
+only the API; the WeChat mini-program is the supported client. No Redis or additional
+service is required.
 
 ## Quick start
 
@@ -17,7 +18,8 @@ Copy-Item .env.example .env
 docker compose up --build -d
 ```
 
-Open http://localhost:19080. Register an account, then promote that exact account:
+The API listens on http://localhost:19080. Register an account through the mini-program
+or an API client, then promote that exact account:
 
 ```powershell
 docker compose exec app club promote your-username
@@ -38,12 +40,11 @@ variables; it does not implicitly load `.env`.
 docker compose up -d db
 $env:DATABASE_URL = 'postgres://club:change-me@localhost:55432/club?sslmode=disable'
 npm ci
-npm run build
 go run .
 ```
 
-In another terminal, run `npm run dev` and open http://localhost:5178. Vite proxies
-`/api` to the Go server on port 19080. For a production binary:
+For the optional browser client, run `npm run build` and `npm run dev` in another
+terminal; Vite proxies `/api` to the Go server on port 19080. For a production binary:
 
 ```powershell
 npm run build
@@ -85,7 +86,8 @@ only accepts a localhost application URL and uses a new fixture namespace each r
 
 - `server/`: HTTP routes, authorization, transactional domain rules and schema.
 - `server/catalog.json`: small offline game catalog; served by `/api/catalog`.
-- `web/src/`: React screens and shared loadout editors.`r`n- `miniapp/`: WeChat mini-program client built with Taro 4 + React + TypeScript + NutUI React Taro.
+- `web/src/`: optional React browser client and shared loadout editors.
+- `miniapp/`: WeChat mini-program client built with Taro 4 + React + TypeScript + NutUI React Taro.
 - `docs/design.md`: accepted behavior, permission rules and persistence decisions.
 - `scripts/sync-catalog.mjs`: regenerates the catalog from a local `data-gmzz` checkout.
 
